@@ -90,7 +90,16 @@ router.post('/me/avatar', [auth, upload.single('avatar')], async(req, res) => {
         // /uploads/avatar-xxx.jpg
 
         const user = await User.findById(req.user.id)
+
+        if (user.profilePicturePublicId) {
+            await cloudinary.uploader.destroy(user.profilePicturePublicId)
+        }
+
         user.profilePicture = req.file.path
+        user.profilePicturePublicId = req.file.filename
+
+        console.log(req)
+
         await user.save()
         res.json({ profilePicture: user.profilePicture })
 
@@ -104,22 +113,16 @@ router.delete('/me/avatar', auth, async(req, res) => {
     try {
         const user = await User.findById(req.user.id)
 
-        if (!user.profilePicture || user.profilePicture === '') {
-            return res.status(400).json({ msg: 'No profile picture to delete.'})
+        if (!user.profilePicturePublicId) {
+            return res.status(400).json({ msg: 'No profile picture to delete'})
         }
 
-        const imagePath = user.profilePicture
+        await cloudinary.uploader.destroy(user.profilePicturePublicId)
 
-        user.profilePicture = ''
+        user.profilePicture = undefined
+        user.profilePicturePublicId = undefined
+
         await user.save()
-
-        fs.unlink(imagePath, (err) => {
-            if (err) {
-                console.error('Failed to delete profile picture file:', err)
-            } else {
-                console.log(`Successfully deleted ${imagePath}`)
-            }
-        })
 
         res.json({ msg: 'Profile picture removed successfully.' })
 
