@@ -3,8 +3,28 @@ const router = express.Router()
 const User = require('../models/User')
 const Post = require('../models/Post')
 const auth = require('../middleware/auth')
-const upload = require('../middleware/upload')
+// const upload = require('../middleware/upload')
 const fs = require('fs')
+const cloudinary = require('cloudinary').v2
+const { CloudinaryStorage } = require('multer-storage-cloudinary')
+const multer = require('multer')
+const dotenv = require('dotenv').config()
+
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+})
+
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'uploads',
+        allowed_formats: ['jpg', 'png', 'jpeg']
+    }
+})
+
+const upload = multer({ storage: storage })
 
 router.get('/:username', async(req, res) => {
     try {
@@ -66,11 +86,11 @@ router.post('/me/avatar', [auth, upload.single('avatar')], async(req, res) => {
             return res.status(400).json({ msg: 'Please upload a file' })
         }
 
-        const filePath = req.file.path.replace(/\\/g, '/')
+        // const filePath = req.file.path.replace(/\\/g, '/')
         // /uploads/avatar-xxx.jpg
 
         const user = await User.findById(req.user.id)
-        user.profilePicture = filePath
+        user.profilePicture = req.file.path
         await user.save()
         res.json({ profilePicture: user.profilePicture })
 
